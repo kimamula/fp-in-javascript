@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "declaration": false,
+        "noImplicitAny": true,
+        "removeComments": true,
+        "noLib": false,
+        "preserveConstEnums": true,
+        "suppressImplicitAnyIndexErrors": true,
+        "noEmitOnError": true
+    },
+    "filesGlob": [
+        "./**/*.ts",
+        "!./node_modules/**/*.ts",
+        "./node_modules/typescript/lib/lib.es6.d.ts",
+        "!./typings/**/*.ts",
+        "./typings/tsd.d.ts"
+    ],
+    "files": [
+        "./perf/Performance.ts",
+        "./src/LazyArray.ts",
+        "./test/LazyArrayTest.ts",
+        "./node_modules/typescript/lib/lib.es6.d.ts",
+        "./typings/tsd.d.ts"
+    ]
+}
