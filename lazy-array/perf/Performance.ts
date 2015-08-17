@@ -25,11 +25,11 @@ function mapx10000_take10toArrayx1_take10toArrayx100<T>(args: {
     let result: number[],
         start = new Date().getTime(),
         _input = args.input;
-    for (let i = 0; i < 10000; i ++) {
+    for (let i = 0; i < 1000; i ++) {
         _input = args.map(_input, increment);
     }
     let mapEnd = new Date().getTime();
-    console.log(`${args.type} map x 10000`, mapEnd - start);
+    console.log(`${args.type} map x 1000`, mapEnd - start);
     result = args.toArray(args.take(_input, 10));
     let take1End = new Date().getTime();
     console.log(`${args.type} take first 10 elements and toArray x 1`, take1End - mapEnd, result);
