@@ -2,14 +2,6 @@ import LazyArray, {ILazyArray, Empty} from '../src/LazyArray';
 import {assert} from 'chai';
 import 'babel/polyfill';
 
-function toArray<A>(lazyArray: ILazyArray<A>): A[] {
-    let result: A[] = [];
-    lazyArray.forEach((a: A) => {
-        result.push(a);
-    });
-    return result;
-}
-
 describe('LazyArray', () => {
     describe('factory', () => {
         it('can function with a native array', () => {
@@ -46,33 +38,33 @@ describe('LazyArray', () => {
             }())
         ].forEach((lazyArray: ILazyArray<string>) => {
             it('can reduce right from left with #reduceRight()', () => {
-                lazyArray.reduceRight((arg: {acc: number; current: string; index: number;}) => {
-                    switch(arg.index) {
+                lazyArray.reduceRight((acc: () => number, current: string, index: number) => {
+                    switch(index) {
                         case 0:
-                            assert.strictEqual(arg.current, 'Mathew');
-                            assert.strictEqual(arg.acc, 6);
+                            assert.strictEqual(current, 'Mathew');
+                            assert.strictEqual(acc(), 6);
                             break;
                         case 1:
-                            assert.strictEqual(arg.current, 'Mark');
-                            assert.strictEqual(arg.acc, 5);
+                            assert.strictEqual(current, 'Mark');
+                            assert.strictEqual(acc(), 5);
                             break;
                         case 2:
-                            assert.strictEqual(arg.current, 'Luke');
-                            assert.strictEqual(arg.acc, 3);
+                            assert.strictEqual(current, 'Luke');
+                            assert.strictEqual(acc(), 3);
                             break;
                         case 3:
-                            assert.strictEqual(arg.current, 'John');
-                            assert.strictEqual(arg.acc, 0);
+                            assert.strictEqual(current, 'John');
+                            assert.strictEqual(acc(), 0);
                             break;
                         default:
                             assert.fail();
                             break;
                     }
-                    return arg.acc + arg.index;
+                    return acc() + index;
                 }, 0);
-                assert.deepEqual(toArray(lazyArray.map((name: string, index: number) => {
+                assert.deepEqual(lazyArray.map((name: string, index: number) => {
                     return `Hello, ${name}: ${index}`;
-                })), [
+                }).toArray(), [
                     'Hello, Mathew: 0',
                     'Hello, Mark: 1',
                     'Hello, Luke: 2',
@@ -80,9 +72,9 @@ describe('LazyArray', () => {
                 ]);
             });
             it('can map each element with #map()', () => {
-                assert.deepEqual(toArray(lazyArray.map((name: string, index: number) => {
+                assert.deepEqual(lazyArray.map((name: string, index: number) => {
                     return `Hello, ${name}: ${index}`;
-                })), [
+                }).toArray(), [
                     'Hello, Mathew: 0',
                     'Hello, Mark: 1',
                     'Hello, Luke: 2',
@@ -106,17 +98,17 @@ describe('LazyArray', () => {
                 }));
             });
             it('can filter its elements with #filter()', () => {
-                assert.deepEqual(toArray(lazyArray.filter((name: string, index: number) => {
+                assert.deepEqual(lazyArray.filter((name: string, index: number) => {
                     return name.length < index * 2;
-                })), ['John']);
+                }).toArray(), ['John']);
             });
             it('can take elements while the given condition is filled with #takeWhile())', () => {
-                assert.deepEqual(toArray(lazyArray.takeWhile((name: string, index: number) => {
+                assert.deepEqual(lazyArray.takeWhile((name: string, index: number) => {
                     return index > 2 || name.length > index * 2;
-                })), ['Mathew', 'Mark']);
+                }).toArray(), ['Mathew', 'Mark']);
             });
             it('can take first n elements with #take())', () => {
-                assert.deepEqual(toArray(lazyArray.take(1)), ['Mathew']);
+                assert.deepEqual(lazyArray.take(1).toArray(), ['Mathew']);
             });
             it('can return the index of an element with #indexOf()', () => {
                 assert.strictEqual(lazyArray.indexOf('Luke'), 2);
@@ -129,10 +121,13 @@ describe('LazyArray', () => {
                 assert.deepEqual(result, ['No 1: Mathew', 'No 2: Mark', 'No 3: Luke', 'No 4: John']);
             });
             it('can append an element with #append()', () => {
-                assert.deepEqual(toArray(lazyArray.append('Paul')), ['Mathew', 'Mark', 'Luke', 'John', 'Paul']);
+                assert.deepEqual(lazyArray.append('Paul').toArray(), ['Mathew', 'Mark', 'Luke', 'John', 'Paul']);
             });
             it('can prepend an element with #prepend()', () => {
-                assert.deepEqual(toArray(lazyArray.prepend('David')), ['David', 'Mathew', 'Mark', 'Luke', 'John']);
+                assert.deepEqual(lazyArray.prepend('David').toArray(), ['David', 'Mathew', 'Mark', 'Luke', 'John']);
+            });
+            it('can convert to a native array with #toArray()', () => {
+                assert.deepEqual(lazyArray.toArray(), ['Mathew', 'Mark', 'Luke', 'John']);
             });
         });
     });
@@ -190,11 +185,11 @@ describe('LazyArray', () => {
                 }());
 
             assert.isTrue(fibonacci.some((i: number) => {return i % 2 === 0;}));
-            assert.deepEqual(toArray(fibonacci.map((i: number) => {
+            assert.deepEqual(fibonacci.map((i: number) => {
                 return i * 3;
             }).takeWhile((i : number) => {
                 return i < 100;
-            })), [3, 6, 9, 15, 24, 39, 63]);
+            }).toArray(), [3, 6, 9, 15, 24, 39, 63]);
         })
     });
 });

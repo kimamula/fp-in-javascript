@@ -3,7 +3,7 @@ export interface ILazyArray<A> {
     head: A;
     tail: ILazyArray<A>;
     length: number;
-    reduceRight<B>(f: (arg: {acc: B; current: A; index: number;}) => B, initial: B): B;
+    reduceRight<B>(f: (acc: () => B, current: A, index: number) => B, initial: B): B;
     some(f: (a: A, index: number) => boolean): boolean;
     every(f: (a: A, index: number) => boolean): boolean;
     map<B>(f: (a: A, index: number) => B): ILazyArray<B>;
@@ -14,17 +14,13 @@ export interface ILazyArray<A> {
     forEach(f: (a: A, index: number) => any): void;
     append(a: A): ILazyArray<A>;
     prepend(a: A): ILazyArray<A>;
+    toArray(): A[];
 }
 
-export default function LazyArray<A>(arg: A[] | IterableIterator<A>): ILazyArray<A> {
-    let iterator: IterableIterator<A>;
-    if (arg instanceof Array) {
-        iterator = (<A[]>arg)[Symbol.iterator]();
-    } else {
-        iterator = <IterableIterator<A>>arg;
-    }
-    let head = iterator.next();
-    let headValue = head.value;
+export default function LazyArray<A>(arg: {[Symbol.iterator](): IterableIterator<A>;}): ILazyArray<A> {
+    let iterator = arg[Symbol.iterator](),
+        head = iterator.next(),
+        headValue = head.value;
     if (head.done) {
         if (typeof headValue === 'undefined') {
             return Empty;
@@ -32,38 +28,44 @@ export default function LazyArray<A>(arg: A[] | IterableIterator<A>): ILazyArray
             return Empty.append(headValue);
         }
     } else {
-        let tail: ILazyArray<A>,
-            tailEvaluated = false;
-        return new LazyArrayImpl({
-            'head': headValue,
-            get tail(): ILazyArray<A> {
-                if (!tailEvaluated) {
-                    tailEvaluated = true;
-                    tail = LazyArray(iterator);
-                }
-                return tail;
+        return new LazyArrayImpl(
+            () => {
+                return headValue;
+            },
+            () => {
+                return LazyArray(iterator);
             }
-        });
+        );
     }
 }
 
 class LazyArrayImpl<A> implements ILazyArray<A> {
     private _length: number = null;
+    private _head: A;
+    private headEvaluated = false;
+    private _tail: ILazyArray<A>;
+    private tailEvaluated = false;
     constructor(
-        private contents: {
-            head: A,
-            tail: ILazyArray<A>
-        }
+        private getHead: () => A,
+        private getTail: () => ILazyArray<A>
     ) {}
 
     isEmpty = false;
 
     get head(): A {
-        return this.contents.head;
+        if (!this.headEvaluated) {
+            this.headEvaluated = true;
+            this._head = this.getHead();
+        }
+        return this._head;
     }
 
     get tail(): ILazyArray<A> {
-        return this.contents.tail;
+        if (!this.tailEvaluated) {
+            this.tailEvaluated = true;
+            this._tail = this.getTail();
+        }
+        return this._tail;
     }
 
     get length(): number {
@@ -73,80 +75,83 @@ class LazyArrayImpl<A> implements ILazyArray<A> {
         return this._length;
     }
 
-    reduceRight<B>(f: (arg: {acc: B; current: A; index: number;}) => B, initial: B, index = 0): B {
+    reduceRight<B>(f: (acc: () => B, current: A, index: number) => B, initial: B, index = 0): B {
         let acc: B = null,
             accEvaluated = false,
             self = this;
-            // TODO オブジェクトの生成に時間がかかっているので、全体的にオブジェクトを作らないでできるか検討する
-        return f({
-            get acc(): B {
+        return f(
+            () => {
                 if (!accEvaluated) {
                     accEvaluated = true;
                     acc = (<LazyArrayImpl<A>>self.tail).reduceRight(f, initial, index + 1);
                 }
                 return acc;
             },
-            'current': this.head,
-            'index': index
-        });
+            this.head,
+            index
+        );
     }
 
     some(f: (a: A, index: number) => boolean): boolean {
-        return this.reduceRight((arg: {acc: boolean; current: A; index: number;}) => {
-            return f(arg.current, arg.index) || arg.acc;
+        return this.reduceRight((acc: () => boolean, current: A, index: number) => {
+            return f(current, index) || acc();
         }, false);
     }
 
     every(f: (a: A, index: number) => boolean): boolean {
-        return this.reduceRight((arg: {acc: boolean; current: A; index: number;}) => {
-            return f(arg.current, arg.index) && arg.acc;
+        return this.reduceRight((acc: () => boolean, current: A, index: number) => {
+            return f(current, index) && acc();
         }, true);
     }
 
     map<B>(f: (a: A, index: number) => B): ILazyArray<B> {
-        return this.reduceRight((arg: {acc: ILazyArray<B>; current: A; index: number;}) => {
+        return this.reduceRight((acc: () => ILazyArray<B>, current: A, index: number) => {
             let head: B,
                 headEvaluated = false;
-            return new LazyArrayImpl({
-                get head(): B {
+            return new LazyArrayImpl(
+                () => {
                     if (!headEvaluated) {
                         headEvaluated = true;
-                        head = f(arg.current, arg.index);
+                        head = f(current, index);
                     }
                     return head;
                 },
-                get tail(): ILazyArray<B> {
-                    return arg.acc;
+                () => {
+                    return acc();
                 }
-            });
+            );
         }, Empty);
     }
 
     filter(f: (a: A, index: number) => boolean): ILazyArray<A> {
-        return this.reduceRight((arg: {acc: ILazyArray<A>; current: A; index: number;}) => {
-            if (f(arg.current, arg.index)) {
-                return new LazyArrayImpl({
-                    'head': arg.current,
-                    get tail(): ILazyArray<A> {
-                        return arg.acc;
+        return this.reduceRight((acc: () => ILazyArray<A>, current: A, index: number) => {
+            if (f(current, index)) {
+                return new LazyArrayImpl(
+                    () => {
+                        return current;
+                    },
+                    () => {
+                        return acc();
                     }
-                });
+                );
             } else {
                 // Cannot avoid immediate evaluation here...
-                return arg.acc;
+                return acc();
             }
         }, Empty);
     }
 
     takeWhile(f: (a: A, index: number) => boolean): ILazyArray<A> {
-        return this.reduceRight((arg: {acc: ILazyArray<A>; current: A; index: number;}) => {
-            if (f(arg.current, arg.index)) {
-                return new LazyArrayImpl({
-                    'head': arg.current,
-                    get tail(): ILazyArray<A> {
-                        return arg.acc;
+        return this.reduceRight((acc: () => ILazyArray<A>, current: A, index: number) => {
+            if (f(current, index)) {
+                return new LazyArrayImpl(
+                    () => {
+                        return current;
+                    },
+                    () => {
+                        return acc();
                     }
-                });
+                );
             } else {
                 return Empty;
             }
@@ -174,28 +179,41 @@ class LazyArrayImpl<A> implements ILazyArray<A> {
     forEach(f: (a: A, index: number) => any): void {
         let current: ILazyArray<A> = this, index = 0;
         while (!current.isEmpty) {
-            f(current.head, index);
-            index += 1;
+            f(current.head, index++);
             current = current.tail;
         }
     }
 
     append(a: A): ILazyArray<A> {
-        return this.reduceRight((arg: {acc: ILazyArray<A>; current: A;}) => {
-            return new LazyArrayImpl({
-                'head': arg.current,
-                get tail(): ILazyArray<A> {
-                    return arg.acc;
+        return this.reduceRight((acc: () => ILazyArray<A>, current: A) => {
+            return new LazyArrayImpl(
+                () => {
+                    return current;
+                },
+                () => {
+                    return acc();
                 }
-            });
+            );
         }, Empty.append(a));
     }
 
     prepend(a: A): ILazyArray<A>{
-        return new LazyArrayImpl({
-            'head': a,
-            'tail': this
+        return new LazyArrayImpl(
+            () => {
+                return a;
+            },
+            () => {
+                return this;
+            }
+        );
+    }
+
+    toArray(): A[] {
+        let result: A[] = [];
+        this.forEach((a: A) => {
+            result.push(a);
         });
+        return result;
     }
 }
 
@@ -212,8 +230,8 @@ export const Empty: ILazyArray<any> = {
     get length(): number {
         return 0;
     },
-    get reduceRight(): <B>(f: (arg: {acc: B; current: any; index: number;}) => B, initial: B) => B {
-        return <B>(f: (arg: {acc: B; current: any; index: number;}) => B, initial: B) => {
+    get reduceRight(): <B>(f: (acc: () => B, current: any, index: number) => B, initial: B) => B {
+        return <B>(f: (acc: () => B, current: any, index: number) => B, initial: B) => {
             return initial;
         };
     },
@@ -257,13 +275,22 @@ export const Empty: ILazyArray<any> = {
     },
     get append(): <A>(a: A) => ILazyArray<A> {
         return <A>(a: A) => {
-            return new LazyArrayImpl({
-                'head': a,
-                'tail': Empty
-            });
+            return new LazyArrayImpl(
+                () => {
+                    return a;
+                },
+                () => {
+                    return Empty;
+                }
+            );
         }
     },
     get prepend(): <A>(a: A) => ILazyArray<A> {
         return Empty.append
+    },
+    get toArray(): () => any[] {
+        return () => {
+            return [];
+        };
     }
 };
