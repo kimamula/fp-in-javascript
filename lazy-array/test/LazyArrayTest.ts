@@ -38,22 +38,22 @@ describe('LazyArray', () => {
             }())
         ].forEach((lazyArray: ILazyArray<string>) => {
             it('can reduce right from left with #reduceRight()', () => {
-                lazyArray.reduceRight((acc: () => number, current: string, index: number) => {
+                lazyArray.reduceRight((acc: () => number, current: () => string, index: number) => {
                     switch(index) {
                         case 0:
-                            assert.strictEqual(current, 'Mathew');
+                            assert.strictEqual(current(), 'Mathew');
                             assert.strictEqual(acc(), 6);
                             break;
                         case 1:
-                            assert.strictEqual(current, 'Mark');
+                            assert.strictEqual(current(), 'Mark');
                             assert.strictEqual(acc(), 5);
                             break;
                         case 2:
-                            assert.strictEqual(current, 'Luke');
+                            assert.strictEqual(current(), 'Luke');
                             assert.strictEqual(acc(), 3);
                             break;
                         case 3:
-                            assert.strictEqual(current, 'John');
+                            assert.strictEqual(current(), 'John');
                             assert.strictEqual(acc(), 0);
                             break;
                         default:
