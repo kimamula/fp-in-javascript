@@ -68,7 +68,7 @@ function mapx10000_take10toArrayx1_take10toArrayx100<T>(args: {
 
 #### Result of the performance comparison with Chrome 44 (*)
 
-Implementation | Array length | Mapping (ms) | Take x 1 (ms) | Take x 100 (ms) | Total (ms)
+Implementation | Array length | Map (ms) | Take x 1 (ms) | Take x 100 (ms) | Total (ms)
 -------------- | ------------ | ------------ | ------------- | --------------- | -----------
 Native | 100   | 16.0 ± 2.6 | 0.3 ± 0.6 | 2.0 ± 1.0 | 18.3 ± 3.1
 Native | 10000 | 915.3 ± 120.8 | 0.0 ± 0.0 | 1.3 ± 0.6 | 916.7 ± 120.9
