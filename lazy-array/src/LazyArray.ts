@@ -77,13 +77,12 @@ class LazyArrayImpl<A> implements ILazyArray<A> {
 
     reduceRight<B>(f: (acc: () => B, current: () => A, index: number) => B, initial: B, index = 0): B {
         let acc: B = null,
-            accEvaluated = false,
-            self = this;
+            accEvaluated = false;
         return f(
             () => {
                 if (!accEvaluated) {
                     accEvaluated = true;
-                    acc = (<LazyArrayImpl<A>>self.tail).reduceRight(f, initial, index + 1);
+                    acc = (<LazyArrayImpl<A>>this.tail).reduceRight(f, initial, index + 1);
                 }
                 return acc;
             },

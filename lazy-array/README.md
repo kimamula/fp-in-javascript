@@ -13,7 +13,7 @@ var mapped = lazyArray.map((e: number, index: number) => {
     return e * index; // calculation is delayed until the element is actually referred to
 });
 
-// can also be create with a generator function
+// can also be created with a generator function
 var fibonacci = LazyArray(function*() {
     let pre = 0, cur = 1;
     for (;;) {
